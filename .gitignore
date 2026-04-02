@@ -1,0 +1,57 @@
+# Dependencies
+node_modules/
+
+# Build / dist
+build/
+dist/
+*.local
+
+# Vite
+.vite/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment (secrets)
+.env
+.env.*
+!.env.example
+
+# Testing / coverage
+coverage/
+.nyc_output/
+
+# TypeScript
+*.tsbuildinfo
+
+# Optional: caches
+.cache/
+.parcel-cache/
+.eslintcache
+.stylelintcache
+
+# Editor & OS
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# IDE
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# Debug
+*.pem
+.debug/
+
+# Misc
+*.swp
+*.swo
+*~
