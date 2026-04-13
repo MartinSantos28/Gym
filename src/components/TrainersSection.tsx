@@ -3,8 +3,7 @@ import { Card, CardContent } from './ui/card';
 import { Badge } from './ui/badge';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { Instagram, Linkedin, Award, Sparkles } from 'lucide-react';
-
-const profileJoselin = '/images/ProfileJoselin.png';
+import profileJoselin from '../assets/ProfileJoselin.png';
 
 const badgeSecondaryDark =
   'border-white/15 bg-white/10 text-white/90 hover:bg-white/15';

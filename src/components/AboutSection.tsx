@@ -2,6 +2,7 @@ import React, { useRef } from 'react';
 import { motion, useScroll, useTransform, useInView } from 'framer-motion';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { Award, Users, Target, Heart, Sparkles, Gem, Crown } from 'lucide-react';
+import yearsOfExp from '../assets/YearsOfExp.png';
 
 export function AboutSection() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -170,7 +171,7 @@ export function AboutSection() {
             >
               <div className="relative overflow-hidden rounded-3xl">
                 <ImageWithFallback
-                  src="/images/YearsOfExp.png"
+                  src={yearsOfExp}
                   alt="Interior de APEX Elite Fitness"
                   className="w-full h-64 sm:h-96 lg:h-[600px] object-cover hover:scale-105 transition-transform duration-700"
                 />

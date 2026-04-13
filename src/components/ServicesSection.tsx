@@ -1,18 +1,26 @@
 import React, { useRef, useState } from 'react';
 import { motion, useScroll, useTransform, useInView } from 'framer-motion';
+import {
+  Dumbbell,
+  Heart,
+  Users,
+  Zap,
+  Music,
+  Target,
+  Sparkles,
+  Crown,
+  Gem,
+  Star,
+  Flame,
+  Shield,
+  Coffee,
+} from 'lucide-react';
 import { Card, CardContent } from './ui/card';
 import { ImageWithFallback } from './figma/ImageWithFallback';
-
-// Vite sirve archivos estáticos desde `/public` como rutas con `/`
-const fuerzaSrc = '/images/FuerzaSrc.png';
-const recuperacionSrc = '/images/RehabilitacionSrc.png';
-const espaciosSrc = '/images/EspacioSrc.png';
-const fisioTerapeutaSrc = '/images/FisioTerapeutaSrc.png';
-
-import { 
-  Dumbbell, Heart, Users, Zap, Music, Target, 
-  Sparkles, Crown, Gem, Star, Flame, Shield, Coffee 
-} from 'lucide-react';
+import fuerzaSrc from '../assets/FuerzaSrc.png';
+import recuperacionSrc from '../assets/RehabilitacionSrc.png';
+import espaciosSrc from '../assets/EspacioSrc.png';
+import fisioTerapeutaSrc from '../assets/FisioTerapeutaSrc.png';
 
 export function ServicesSection() {
   const containerRef = useRef<HTMLDivElement>(null);
