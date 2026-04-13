@@ -17,9 +17,17 @@ export const DEMO_USER = {
   displayName: 'Martin Santos',
 } as const;
 
+/** Admin demo (hasta conectar API). */
+export const DEMO_ADMIN = {
+  username: 'admin',
+  password: 'admin123',
+  displayName: 'Administrador',
+} as const;
+
 export type AuthUser = {
   username: string;
   displayName: string;
+  role: 'member' | 'admin';
 };
 
 export type AuthModalView = 'login' | 'register';
@@ -45,7 +53,7 @@ function loadStoredUser(): AuthUser | null {
     const raw = sessionStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as AuthUser;
-    if (parsed?.username && parsed?.displayName) return parsed;
+    if (parsed?.username && parsed?.displayName && parsed?.role) return parsed;
     return null;
   } catch {
     return null;
@@ -81,13 +89,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = useCallback((identifier: string, password: string) => {
     const u = normalizeUsername(identifier);
     const expectedUser = DEMO_USER.username.toLowerCase();
+    const expectedAdmin = DEMO_ADMIN.username.toLowerCase();
     const pwd = password.trim();
+
+    if (u === expectedAdmin && pwd === DEMO_ADMIN.password) {
+      flushSync(() => {
+        setUser({
+          username: DEMO_ADMIN.username,
+          displayName: DEMO_ADMIN.displayName,
+          role: 'admin',
+        });
+      });
+      return true;
+    }
 
     if (u === expectedUser && pwd === DEMO_USER.password) {
       flushSync(() => {
         setUser({
           username: DEMO_USER.username,
           displayName: DEMO_USER.displayName,
+          role: 'member',
         });
       });
       return true;

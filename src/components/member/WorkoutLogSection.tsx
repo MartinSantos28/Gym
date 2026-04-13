@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -25,6 +25,7 @@ import {
   CalendarRange,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   ClipboardList,
   Plus,
   Trash2,
@@ -41,11 +42,23 @@ const inputClass =
 export function WorkoutLogSection({ selectedDate, onDateChange }: Props) {
   const { user } = useAuth();
   const { byDate, replaceDay, storageReady } = useWorkoutLog(user?.username);
+  const [openById, setOpenById] = useState<Record<string, boolean>>({});
 
   const exercises = useMemo(
     () => byDate[selectedDate] ?? [],
     [byDate, selectedDate],
   );
+
+  // Auto-open new exercises and clean up removed ids.
+  useEffect(() => {
+    setOpenById((prev) => {
+      const next: Record<string, boolean> = {};
+      for (const ex of exercises) {
+        next[ex.id] = prev[ex.id] ?? true;
+      }
+      return next;
+    });
+  }, [exercises]);
 
   const setExercises = (next: LoggedExercise[]) => {
     replaceDay(selectedDate, next);
@@ -58,12 +71,22 @@ export function WorkoutLogSection({ selectedDate, onDateChange }: Props) {
     setExercises(exercises.map((ex) => (ex.id === id ? fn(ex) : ex)));
   };
 
-  const addFromLibrary = (title: string, category?: LoggedExercise['category']) => {
-    setExercises([...exercises, createExercise(title, category)]);
+  const addFromLibrary = (
+    title: string,
+    category?: LoggedExercise['category'],
+  ) => {
+    const created = createExercise(title, category);
+    setExercises([...exercises, created]);
+    setOpenById((p) => ({ ...p, [created.id]: true }));
   };
 
   const removeExercise = (id: string) => {
     setExercises(exercises.filter((ex) => ex.id !== id));
+    setOpenById((p) => {
+      const next = { ...p };
+      delete next[id];
+      return next;
+    });
   };
 
   const updateName = (id: string, name: string) => {
@@ -98,6 +121,8 @@ export function WorkoutLogSection({ selectedDate, onDateChange }: Props) {
   };
 
   const countSeries = exercises.reduce((n, e) => n + e.sets.length, 0);
+  const toggle = (id: string) =>
+    setOpenById((p) => ({ ...p, [id]: !p[id] }));
 
   return (
     <section
@@ -210,12 +235,11 @@ export function WorkoutLogSection({ selectedDate, onDateChange }: Props) {
           variant="outline"
           className="w-full border-primary/40 bg-primary/10 text-primary hover:bg-primary/20 sm:w-auto"
           disabled={!storageReady}
-          onClick={() =>
-            setExercises([
-              ...exercises,
-              createExercise('Nuevo ejercicio', undefined),
-            ])
-          }
+          onClick={() => {
+            const created = createExercise('Nuevo ejercicio', undefined);
+            setExercises([...exercises, created]);
+            setOpenById((p) => ({ ...p, [created.id]: true }));
+          }}
         >
           <Plus className="h-4 w-4" />
           Ejercicio en blanco
@@ -248,145 +272,185 @@ export function WorkoutLogSection({ selectedDate, onDateChange }: Props) {
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: exIdx * 0.03 }}
-                className="rounded-3xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-xl sm:p-5"
+                className="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04] backdrop-blur-xl"
               >
-                <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="min-w-0 flex-1 space-y-2">
-                    <Label
-                      htmlFor={`ex-name-${ex.id}`}
-                      className="text-xs text-white/50"
-                    >
-                      Ejercicio
-                    </Label>
-                    <Input
-                      id={`ex-name-${ex.id}`}
-                      value={ex.name}
-                      onChange={(e) => updateName(ex.id, e.target.value)}
-                      disabled={!storageReady}
-                      className={inputClass}
-                      placeholder="Nombre del movimiento"
-                    />
+                <button
+                  type="button"
+                  onClick={() => toggle(ex.id)}
+                  className="flex w-full items-start justify-between gap-3 border-b border-white/10 bg-black/20 px-4 py-4 text-left transition-colors hover:bg-white/[0.04] sm:px-5"
+                  aria-expanded={Boolean(openById[ex.id])}
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-white/90 line-clamp-1">
+                      {ex.name || 'Ejercicio'}
+                    </p>
+                    <p className="mt-1 text-xs text-white/50">
+                      {ex.sets.length} serie{ex.sets.length === 1 ? '' : 's'}
+                      {ex.category
+                        ? ` · ${
+                            ROUTINE_CATEGORIES.find((c) => c.id === ex.category)
+                              ?.shortLabel ?? 'Rutina'
+                          }`
+                        : ''}
+                    </p>
                   </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="shrink-0 text-white/50 hover:bg-destructive/15 hover:text-red-400"
-                    aria-label="Eliminar ejercicio"
-                    onClick={() => removeExercise(ex.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
+                  <ChevronDown
+                    className={`mt-0.5 h-5 w-5 shrink-0 text-white/55 transition-transform ${
+                      openById[ex.id] ? 'rotate-180' : ''
+                    }`}
+                  />
+                </button>
 
-                {ex.category ? (
-                  <div className="mb-3">
-                    <span className="rounded-full border border-white/12 bg-white/[0.06] px-2.5 py-0.5 text-[11px] font-semibold text-white/70">
-                      {
-                        ROUTINE_CATEGORIES.find((c) => c.id === ex.category)
-                          ?.label
-                      }
-                    </span>
-                  </div>
-                ) : null}
-
-                <div className="space-y-2">
-                  <div className="hidden grid-cols-[2.5rem_1fr_1fr_2.5rem] gap-2 px-1 sm:grid">
-                    <span />
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-white/40">
-                      Reps
-                    </span>
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-white/40">
-                      Peso (kg)
-                    </span>
-                    <span />
-                  </div>
-                  {ex.sets.map((set, setIdx) => (
-                    <div
-                      key={set.id}
-                      className="grid grid-cols-1 gap-2 rounded-2xl border border-white/5 bg-black/25 p-3 sm:grid-cols-[2.5rem_1fr_1fr_2.5rem] sm:items-center sm:p-2"
+                <AnimatePresence initial={false}>
+                  {openById[ex.id] ? (
+                    <motion.div
+                      key="content"
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="p-4 sm:p-5"
                     >
-                      <div className="flex items-center justify-between sm:block sm:text-center">
-                        <span className="text-[10px] font-semibold uppercase text-white/40 sm:hidden">
-                          Serie {setIdx + 1}
-                        </span>
-                        <span className="text-sm font-bold tabular-nums text-primary sm:block sm:pt-1">
-                          {setIdx + 1}
-                        </span>
-                      </div>
-                      <div className="space-y-1">
-                        <Label
-                          htmlFor={`reps-${set.id}`}
-                          className="text-[10px] text-white/45 sm:sr-only"
-                        >
-                          Repeticiones serie {setIdx + 1}
-                        </Label>
-                        <Input
-                          id={`reps-${set.id}`}
-                          inputMode="numeric"
-                          placeholder="Reps"
-                          value={set.reps}
-                          onChange={(e) =>
-                            updateSet(ex.id, set.id, {
-                              reps: e.target.value.replace(/[^\d]/g, ''),
-                            })
-                          }
-                          disabled={!storageReady}
-                          className={inputClass}
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label
-                          htmlFor={`kg-${set.id}`}
-                          className="text-[10px] text-white/45 sm:sr-only"
-                        >
-                          Peso kg serie {setIdx + 1}
-                        </Label>
-                        <Input
-                          id={`kg-${set.id}`}
-                          inputMode="decimal"
-                          placeholder="Kg"
-                          value={set.weightKg}
-                          onChange={(e) =>
-                            updateSet(ex.id, set.id, {
-                              weightKg: e.target.value.replace(
-                                /[^\d.,]/g,
-                                '',
-                              ),
-                            })
-                          }
-                          disabled={!storageReady}
-                          className={inputClass}
-                        />
-                      </div>
-                      <div className="flex justify-end sm:justify-center">
+                      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="min-w-0 flex-1 space-y-2">
+                          <Label
+                            htmlFor={`ex-name-${ex.id}`}
+                            className="text-xs text-white/50"
+                          >
+                            Nombre del ejercicio
+                          </Label>
+                          <Input
+                            id={`ex-name-${ex.id}`}
+                            value={ex.name}
+                            onChange={(e) => updateName(ex.id, e.target.value)}
+                            disabled={!storageReady}
+                            className={inputClass}
+                            placeholder="Ej. Press banca"
+                          />
+                        </div>
                         <Button
                           type="button"
                           variant="ghost"
                           size="icon"
-                          className="text-white/45 hover:bg-white/10 hover:text-red-400"
-                          aria-label={`Eliminar serie ${setIdx + 1}`}
-                          disabled={ex.sets.length <= 1}
-                          onClick={() => removeSet(ex.id, set.id)}
+                          className="shrink-0 text-white/50 hover:bg-destructive/15 hover:text-red-400"
+                          aria-label="Eliminar ejercicio"
+                          onClick={() => removeExercise(ex.id)}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
-                    </div>
-                  ))}
-                </div>
 
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="mt-3 border-white/15 bg-white/5 text-white hover:bg-white/10"
-                  onClick={() => addSet(ex.id)}
-                  disabled={!storageReady}
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  Añadir serie
-                </Button>
+                      {ex.category ? (
+                        <div className="mb-3">
+                          <span className="rounded-full border border-white/12 bg-white/[0.06] px-2.5 py-0.5 text-[11px] font-semibold text-white/70">
+                            {
+                              ROUTINE_CATEGORIES.find((c) => c.id === ex.category)
+                                ?.label
+                            }
+                          </span>
+                        </div>
+                      ) : null}
+
+                      <div className="space-y-2">
+                        <div className="hidden grid-cols-[2.5rem_1fr_1fr_2.5rem] gap-2 px-1 sm:grid">
+                          <span />
+                          <span className="text-[10px] font-semibold uppercase tracking-wider text-white/40">
+                            Reps
+                          </span>
+                          <span className="text-[10px] font-semibold uppercase tracking-wider text-white/40">
+                            Peso (kg)
+                          </span>
+                          <span />
+                        </div>
+                        {ex.sets.map((set, setIdx) => (
+                          <div
+                            key={set.id}
+                            className="grid grid-cols-1 gap-2 rounded-2xl border border-white/5 bg-black/25 p-3 sm:grid-cols-[2.5rem_1fr_1fr_2.5rem] sm:items-center sm:p-2"
+                          >
+                            <div className="flex items-center justify-between sm:block sm:text-center">
+                              <span className="text-[10px] font-semibold uppercase text-white/40 sm:hidden">
+                                Serie {setIdx + 1}
+                              </span>
+                              <span className="text-sm font-bold tabular-nums text-primary sm:block sm:pt-1">
+                                {setIdx + 1}
+                              </span>
+                            </div>
+                            <div className="space-y-1">
+                              <Label
+                                htmlFor={`reps-${set.id}`}
+                                className="text-[10px] text-white/45 sm:sr-only"
+                              >
+                                Repeticiones serie {setIdx + 1}
+                              </Label>
+                              <Input
+                                id={`reps-${set.id}`}
+                                inputMode="numeric"
+                                placeholder="Reps"
+                                value={set.reps}
+                                onChange={(e) =>
+                                  updateSet(ex.id, set.id, {
+                                    reps: e.target.value.replace(/[^\d]/g, ''),
+                                  })
+                                }
+                                disabled={!storageReady}
+                                className={inputClass}
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label
+                                htmlFor={`kg-${set.id}`}
+                                className="text-[10px] text-white/45 sm:sr-only"
+                              >
+                                Peso kg serie {setIdx + 1}
+                              </Label>
+                              <Input
+                                id={`kg-${set.id}`}
+                                inputMode="decimal"
+                                placeholder="Kg"
+                                value={set.weightKg}
+                                onChange={(e) =>
+                                  updateSet(ex.id, set.id, {
+                                    weightKg: e.target.value.replace(
+                                      /[^\d.,]/g,
+                                      '',
+                                    ),
+                                  })
+                                }
+                                disabled={!storageReady}
+                                className={inputClass}
+                              />
+                            </div>
+                            <div className="flex justify-end sm:justify-center">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="text-white/45 hover:bg-white/10 hover:text-red-400"
+                                aria-label={`Eliminar serie ${setIdx + 1}`}
+                                disabled={ex.sets.length <= 1}
+                                onClick={() => removeSet(ex.id, set.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="mt-3 border-white/15 bg-white/5 text-white hover:bg-white/10"
+                        onClick={() => addSet(ex.id)}
+                        disabled={!storageReady}
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                        Añadir serie
+                      </Button>
+                    </motion.div>
+                  ) : null}
+                </AnimatePresence>
               </motion.article>
             ))}
           </div>

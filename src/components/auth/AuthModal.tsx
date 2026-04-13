@@ -14,6 +14,7 @@ import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { LogIn, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth, type AuthModalView } from '../../context/AuthContext';
+import { createMemberFromRegistration, upsertMember } from '../../lib/membersStorage';
 
 const fieldClass =
   'bg-white/5 border-white/15 text-white placeholder:text-white/35 focus-visible:border-primary/50 focus-visible:ring-primary/25';
@@ -77,7 +78,7 @@ export function AuthModal({
     }
 
     if (authLogin(id, loginPassword)) {
-      toast.success('Bienvenido a tu panel');
+      toast.success('Sesión iniciada');
       resetLogin();
       onOpenChange(false);
       return;
@@ -106,7 +107,22 @@ export function AuthModal({
       toast.error('Indica una edad válida (14 a 120 años)');
       return;
     }
-    toast.success('Cuenta registrada (demo). Aquí enviarías los datos al servidor.');
+
+    const { member, generatedPassword } = createMemberFromRegistration({
+      apellidoPaterno: regApellidoPaterno,
+      apellidoMaterno: regApellidoMaterno,
+      nombre: regNombre,
+      telefono: regTelefono,
+      direccion: regDireccion,
+      edad,
+      sexo: regSexo,
+      subscriptionType: 'Mensual',
+    });
+    upsertMember(member);
+
+    toast.success(
+      `Socio registrado (demo). Usuario: ${member.username} · Contraseña: ${generatedPassword}`,
+    );
     resetRegister();
     onOpenChange(false);
   };

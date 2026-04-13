@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Toaster } from 'sonner';
 import { useAuth } from './context/AuthContext';
 import { MemberDashboard } from './components/member/MemberDashboard';
+import { AdminDashboard } from './components/admin/AdminDashboard';
 import { AuthModal } from './components/auth/AuthModal';
 import { Header } from './components/Header';
 import { HeroSection } from './components/HeroSection';
@@ -20,7 +21,7 @@ export default function App() {
   if (user) {
     return (
       <>
-        <MemberDashboard />
+        {user.role === 'admin' ? <AdminDashboard /> : <MemberDashboard />}
         <Toaster theme="dark" position="top-center" richColors closeButton />
       </>
     );
