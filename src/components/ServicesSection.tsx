@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion, useScroll, useTransform, useInView } from 'framer-motion';
 import {
   Dumbbell,
@@ -24,7 +24,38 @@ import fisioTerapeutaSrc from '../assets/FisioTerapeutaSrc.png';
 
 export function ServicesSection() {
   const containerRef = useRef<HTMLDivElement>(null);
-  const isInView = useInView(containerRef, { once: true, amount: 0.2 });
+  /**
+   * Safari iOS (p. ej. iPhone 15 Pro) a veces no dispara IntersectionObserver a tiempo
+   * con umbrales altos + viewport dinámico. Si `isInView` nunca pasa a true, todas las
+   * animaciones quedan en `initial` (opacity: 0) y la sección parece vacía.
+   */
+  const isInView = useInView(containerRef, {
+    once: true,
+    amount: 0.01,
+    margin: '0px 0px -25% 0px',
+  });
+  const [fallbackReveal, setFallbackReveal] = useState(false);
+  const [prefersCoarsePointer, setPrefersCoarsePointer] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+  });
+
+  useEffect(() => {
+    const mq = window.matchMedia?.('(hover: none) and (pointer: coarse)');
+    if (!mq) return;
+    const update = () => setPrefersCoarsePointer(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
+
+  useEffect(() => {
+    if (isInView) return;
+    const id = window.setTimeout(() => setFallbackReveal(true), 1800);
+    return () => window.clearTimeout(id);
+  }, [isInView]);
+
+  const showContent = isInView || fallbackReveal;
   const [hoveredCard, setHoveredCard] = useState<number | null>(null);
 
   const { scrollYProgress } = useScroll({
@@ -131,13 +162,13 @@ export function ServicesSection() {
         {/* Section Header */}
         <motion.div
           initial={{ opacity: 0, y: 50 }}
-          animate={isInView ? { opacity: 1, y: 0 } : {}}
+          animate={showContent ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.8 }}
           className="text-center mb-12 sm:mb-16 lg:mb-20"
         >
           <motion.div
             initial={{ scale: 0, rotate: -180 }}
-            animate={isInView ? { scale: 1, rotate: 0 } : {}}
+            animate={showContent ? { scale: 1, rotate: 0 } : {}}
             transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
             className="inline-flex items-center space-x-2 glass-dark rounded-full px-6 py-3 mb-8 border border-primary/30"
           >
@@ -153,7 +184,7 @@ export function ServicesSection() {
           
           <motion.p 
             initial={{ opacity: 0 }}
-            animate={isInView ? { opacity: 1 } : {}}
+            animate={showContent ? { opacity: 1 } : {}}
             transition={{ delay: 0.6 }}
             className="text-base sm:text-xl text-white/80 max-w-4xl mx-auto leading-relaxed px-1"
           >
@@ -167,33 +198,42 @@ export function ServicesSection() {
           {services.map((service, index) => (
             <motion.div
               key={index}
-              initial={{ 
-                opacity: 0, 
-                y: 50,
-                rotateX: -15,
-                scale: 0.9
-              }}
-              animate={isInView ? { 
-                opacity: 1, 
-                y: 0,
-                rotateX: 0,
-                scale: 1
-              } : {}}
+              initial={
+                prefersCoarsePointer
+                  ? { opacity: 0, y: 28, scale: 0.98 }
+                  : {
+                      opacity: 0,
+                      y: 50,
+                      rotateX: -15,
+                      scale: 0.9,
+                    }
+              }
+              animate={
+                showContent
+                  ? prefersCoarsePointer
+                    ? { opacity: 1, y: 0, scale: 1 }
+                    : { opacity: 1, y: 0, rotateX: 0, scale: 1 }
+                  : {}
+              }
               transition={{ 
                 delay: index * 0.15,
                 duration: 0.8,
                 type: "spring",
                 stiffness: 100
               }}
-              whileHover={{ 
-                y: -15,
-                rotateX: 5,
-                rotateY: 5,
-                scale: 1.02
-              }}
+              whileHover={
+                prefersCoarsePointer
+                  ? { y: 0, scale: 1 }
+                  : {
+                      y: -15,
+                      rotateX: 5,
+                      rotateY: 5,
+                      scale: 1.02,
+                    }
+              }
               onHoverStart={() => setHoveredCard(index)}
               onHoverEnd={() => setHoveredCard(null)}
-              className="group perspective-1000"
+              className={prefersCoarsePointer ? 'group' : 'group perspective-1000'}
             >
               <Card className="relative overflow-hidden bg-transparent border-0 h-full hover-lift">
                 {/* Premium Badge */}
@@ -285,7 +325,7 @@ export function ServicesSection() {
                         <motion.div
                           key={featureIndex}
                           initial={{ opacity: 0, x: -20 }}
-                          animate={isInView ? { opacity: 1, x: 0 } : {}}
+                          animate={showContent ? { opacity: 1, x: 0 } : {}}
                           transition={{ delay: index * 0.15 + featureIndex * 0.1 + 0.8 }}
                           className="flex items-center space-x-3 group/feature"
                         >
@@ -348,7 +388,7 @@ export function ServicesSection() {
         {/* Bottom CTA */}
         <motion.div
           initial={{ opacity: 0, y: 50 }}
-          animate={isInView ? { opacity: 1, y: 0 } : {}}
+          animate={showContent ? { opacity: 1, y: 0 } : {}}
           transition={{ delay: 1.5, duration: 0.8 }}
           className="text-center mt-12 sm:mt-20 px-1"
         >
